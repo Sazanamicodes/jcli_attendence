@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monthly Attendance Rate Calculator (Japan)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Sans:wght@400;600&display=swap');
+
+    :root {
+      --bg: #f2efe9;
+      --panel: #ffffff;
+      --ink: #1c1b19;
+      --muted: #6d6a64;
+      --accent: #f25f3a;
+      --accent-2: #1f6feb;
+      --line: #e3ded6;
+      --holiday: #ffe7d9;
+      --custom: #e0f2fe;
+      --weekend: #f7f4ee;
+      --ok: #1f8f5f;
+      --warn: #b45309;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #ffe1d6 0%, transparent 60%),
+        radial-gradient(900px 500px at 110% 10%, #d7e6ff 0%, transparent 60%),
+        var(--bg);
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 18px 48px;
+    }
+
+    header {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .lang-select {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .lang-select select {
+      min-width: 140px;
+    }
+
+    h1 {
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-size: clamp(24px, 3.2vw, 40px);
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 0;
+      max-width: 70ch;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 18px;
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+
+    .section-title {
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 0.02em;
+      margin: 0 0 10px;
+    }
+
+    .inputs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .inputs { grid-template-columns: 1fr; }
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    input, select {
+      font: inherit;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    input[type="number"] { width: 100%; }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .cal-head {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      text-align: center;
+    }
+
+    .day {
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      min-height: 68px;
+      background: #fff;
+      display: grid;
+      align-content: start;
+      gap: 4px;
+    }
+
+    .day.weekend { background: var(--weekend); }
+    .day.holiday { background: var(--holiday); border-color: #f6c2a6; }
+    .day.custom { background: var(--custom); border-color: #8ecae6; }
+    .day.fixed { background: #f3e8ff; border-color: #d2b4f5; }
+    .day.selectable { cursor: pointer; }
+    .day.selected { outline: 2px solid var(--accent-2); }
+
+    .day-num {
+      font-weight: 700;
+      font-family: "Space Grotesk", system-ui, sans-serif;
+    }
+
+    .holiday-name {
+      font-size: 11px;
+      color: #7a3419;
+      line-height: 1.2;
+    }
+
+    .empty { background: transparent; border: none; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .metrics { grid-template-columns: 1fr; }
+    }
+
+    .metric {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #fffdf9;
+    }
+
+    .metric .label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .metric .value {
+      font-size: 20px;
+      font-weight: 700;
+      font-family: "Space Grotesk", system-ui, sans-serif;
+    }
+
+    .highlight {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #e6f7ef;
+      color: var(--ok);
+      border: 1px solid #b7ebd0;
+    }
+
+    .warning {
+      background: #fff2d8;
+      color: var(--warn);
+      border-color: #f9d58f;
+    }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot.holiday { background: #f6c2a6; }
+    .dot.weekend { background: #d6d0c6; }
+    .dot.custom { background: #8ecae6; }
+    .dot.fixed { background: #d2b4f5; }
+
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .or-sep {
+      grid-column: 1 / -1;
+      text-align: left;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 2px 0;
+    }
+
+    .holiday-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 10px 0 6px;
+    }
+
+    .holiday-controls button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .holiday-controls button.active {
+      border-color: var(--accent-2);
+      background: #e6efff;
+    }
+
+    @media (max-width: 520px) {
+      .page { padding: 20px 12px 36px; }
+      .header-row { align-items: flex-start; }
+      .lang-select { width: 100%; justify-content: space-between; }
+      .lang-select select { min-width: 0; width: 150px; }
+      .calendar { gap: 4px; }
+      .cal-head { font-size: 10px; letter-spacing: 0.06em; }
+      .day { min-height: 52px; padding: 6px; }
+      .day-num { font-size: 13px; }
+      .holiday-name { font-size: 10px; }
+      .metric .value { font-size: 18px; }
+      input, select { padding: 9px 10px; }
+      .holiday-controls button { padding: 7px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="header-row">
+        <h1>Monthly Attendance Rate Calculator (Japan)</h1>
+        <label class="lang-select">
+          <span data-i18n="language">Language</span>
+          <select id="language">
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="zh">中文</option>
+          </select>
+        </label>
+      </div>
+      <p class="subtitle">
+        Calculates required school days based on weekends and Japan national holidays. One day = 4 lessons. One unattended lesson = 1 absence. One late or early-leave lesson = 1/4 absence.
+      </p>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <h2 class="section-title" data-i18n="monthSetup">Month Setup</h2>
+        <div class="inputs">
+          <label>
+            <span data-i18n="year">Year</span>
+            <input id="year" type="number" min="2000" max="2100" />
+          </label>
+          <label>
+            <span data-i18n="month">Month</span>
+            <select id="month"></select>
+          </label>
+          <label>
+            <span data-i18n="targetRate">Target attendance rate (%)</span>
+            <input id="targetRate" type="number" min="50" max="100" step="1" value="90" />
+          </label>
+        </div>
+        <div class="holiday-controls">
+          <button id="addHolidayBtn" type="button" data-i18n="addHoliday">Add holiday</button>
+          <button id="deleteHolidayBtn" type="button" data-i18n="deleteHoliday">Delete holiday</button>
+          <button id="saveHolidayBtn" type="button" data-i18n="save">Save</button>
+        </div>
+        <p class="note" data-i18n="holidayNote">Click days to add/remove custom school holidays, then Save. Jan 1-12 and March 25-31 are always school holidays.</p>
+
+        <div class="calendar" id="calendar"></div>
+        <div class="legend">
+          <span><i class="dot weekend"></i><span data-i18n="weekend">Weekend</span></span>
+          <span><i class="dot holiday"></i><span data-i18n="nationalHoliday">National holiday</span></span>
+          <span><i class="dot custom"></i><span data-i18n="customHoliday">Custom school holiday</span></span>
+          <span><i class="dot fixed"></i><span data-i18n="schoolEnds">School ends (Mar 25-31)</span></span>
+        </div>
+        <div class="status" data-i18n="aprilNotice">Note: Holidays from April are not fully implemented yet.</div>
+        <div class="status" id="holidayStatus" data-i18n="holidayLoading" hidden></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="section-title" data-i18n="attendanceInputs">Attendance Inputs (Per Lesson)</h2>
+        <div class="inputs">
+          <label>
+            <span data-i18n="absentLessons">Absent lessons</span>
+            <input id="absentLessons" type="number" min="0" step="1" value="0" />
+          </label>
+          <label>
+            <span data-i18n="lateLessons">Late or early-leave lessons</span>
+            <input id="lateLessons" type="number" min="0" step="1" value="0" />
+          </label>
+        </div>
+
+        <h2 class="section-title" style="margin-top: 16px;" data-i18n="monthlySummary">Monthly Summary</h2>
+        <div class="metrics">
+          <div class="metric">
+            <div class="label" data-i18n="requiredDays">Required school days</div>
+            <div class="value" id="reqDays">0</div>
+          </div>
+          <div class="metric">
+            <div class="label" data-i18n="requiredLessons">Required lessons (days × 4)</div>
+            <div class="value" id="reqLessons">0</div>
+          </div>
+          <div class="metric">
+            <div class="label" data-i18n="currentRate">Current attendance rate</div>
+            <div class="value" id="currentRate">0%</div>
+          </div>
+        </div>
+
+        <h2 class="section-title" style="margin-top: 16px;" data-i18n="allowedAbsence">Allowed Absence to Meet Target</h2>
+        <div class="metrics">
+          <div class="metric">
+            <div class="label" data-i18n="remainingAbsentDays">How many more days can I be absent?</div>
+            <div class="value" id="remainingAbsDays">0</div>
+          </div>
+          <div class="or-sep" data-i18n="or">or</div>
+          <div class="metric">
+            <div class="label" data-i18n="remainingLate">How many more late/early lessons can I do?</div>
+            <div class="value" id="remainingLateOnly">0</div>
+          </div>
+        </div>
+        <div class="status" id="rateStatus"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const lessonsPerDay = 4;
+    const countryCode = "JP";
+    const apiBase = "https://date.nager.at/api/v3/PublicHolidays/";
+
+    const elYear = document.getElementById("year");
+    const elMonth = document.getElementById("month");
+    const elTargetRate = document.getElementById("targetRate");
+    const elLanguage = document.getElementById("language");
+    const elAbsentLessons = document.getElementById("absentLessons");
+    const elLateLessons = document.getElementById("lateLessons");
+    const elCalendar = document.getElementById("calendar");
+    const elHolidayStatus = document.getElementById("holidayStatus");
+    const elAddHolidayBtn = document.getElementById("addHolidayBtn");
+    const elDeleteHolidayBtn = document.getElementById("deleteHolidayBtn");
+    const elSaveHolidayBtn = document.getElementById("saveHolidayBtn");
+    const elReqDays = document.getElementById("reqDays");
+    const elReqLessons = document.getElementById("reqLessons");
+    const elCurrentRate = document.getElementById("currentRate");
+    const elRemainingAbsDays = document.getElementById("remainingAbsDays");
+    const elRemainingLateOnly = document.getElementById("remainingLateOnly");
+    const elRateStatus = document.getElementById("rateStatus");
+
+    const i18n = {
+      en: {
+        title: "Monthly Attendance Rate Calculator (Japan)",
+        subtitle: "Calculates required school days based on weekends and Japan national holidays. One day = 4 lessons. One unattended lesson = 1 absence. One late or early-leave lesson = 1/4 absence.",
+        year: "Year",
+        month: "Month",
+        targetRate: "Target attendance rate (%)",
+        language: "Language",
+        addHoliday: "Add holiday",
+        deleteHoliday: "Delete holiday",
+        save: "Save",
+        holidayNote: "Click days to add/remove custom school holidays, then Save. Jan 1-12 and March 25-31 are always school holidays.",
+        aprilNotice: "Note: Holidays from April are not fully implemented yet.",
+        weekend: "Weekend",
+        nationalHoliday: "National holiday",
+        customHoliday: "Custom school holiday",
+        schoolEnds: "School ends (Mar 25-31)",
+        holidayLoading: "Loading holidays…",
+        holidayLoaded: "Holidays loaded.",
+        holidayError: "Could not load holidays. Calendar will show weekends only.",
+        holidaySaved: "Custom holidays saved.",
+        attendanceInputs: "Attendance Inputs (Per Lesson)",
+        monthSetup: "Month Setup",
+        absentLessons: "Absent lessons",
+        lateLessons: "Late or early-leave lessons",
+        monthlySummary: "Monthly Summary",
+        requiredDays: "Required school days",
+        requiredLessons: "Required lessons (days × 4)",
+        currentRate: "Current attendance rate",
+        allowedAbsence: "Allowed Absence to Meet Target",
+        remainingAbsentDays: "How many more days can I be absent?",
+        or: "or",
+        remainingLate: "How many more late/early lessons can I do?",
+        rateOnTrack: (rate) => `On track. You are at or above your ${rate}% target.`,
+        rateBelow: (delta) => `Below target. You need ${delta}% more attendance.`,
+        noRequired: "No required lessons in this month after weekends/holidays.",
+        months: [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ],
+        weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        labelSchoolHoliday: "School holiday",
+        labelCustomHoliday: "Custom holiday"
+      },
+      ja: {
+        title: "月別出席率計算（日本）",
+        subtitle: "週末と日本の祝日を除いて必要登校日数を計算します。1日=4コマ。欠席1コマ=欠席1、遅刻・早退1コマ=欠席1/4。",
+        year: "年",
+        month: "月",
+        targetRate: "目標出席率（%）",
+        language: "言語",
+        addHoliday: "休日を追加",
+        deleteHoliday: "休日を削除",
+        save: "保存",
+        holidayNote: "日付をクリックして学校の休日を追加/削除し、保存してください。1月1〜12日と3月25〜31日は常に休日です。",
+        aprilNotice: "注意：4月以降の休日はまだ完全に反映されていません。",
+        weekend: "週末",
+        nationalHoliday: "祝日",
+        customHoliday: "学校の休日",
+        schoolEnds: "学年終了（3/25〜31）",
+        holidayLoading: "祝日を読み込み中…",
+        holidayLoaded: "祝日を読み込みました。",
+        holidayError: "祝日を取得できません。週末のみ表示します。",
+        holidaySaved: "学校の休日を保存しました。",
+        attendanceInputs: "出席入力（1コマ単位）",
+        monthSetup: "月の設定",
+        absentLessons: "欠席コマ数",
+        lateLessons: "遅刻・早退コマ数",
+        monthlySummary: "月間サマリー",
+        requiredDays: "必要登校日数",
+        requiredLessons: "必要コマ数（登校日 × 4）",
+        currentRate: "現在の出席率",
+        allowedAbsence: "目標達成のための許容範囲",
+        remainingAbsentDays: "あと何日欠席できる？",
+        or: "または",
+        remainingLate: "あと何コマ遅刻/早退できる？",
+        rateOnTrack: (rate) => `順調です。出席率は${rate}%を上回っています。`,
+        rateBelow: (delta) => `目標まであと${delta}%必要です。`,
+        noRequired: "今月は休日・週末を除く必要コマがありません。",
+        months: [
+          "1月", "2月", "3月", "4月", "5月", "6月",
+          "7月", "8月", "9月", "10月", "11月", "12月"
+        ],
+        weekdays: ["月", "火", "水", "木", "金", "土", "日"],
+        labelSchoolHoliday: "学校の休日",
+        labelCustomHoliday: "学校の休日"
+      },
+      zh: {
+        title: "月度出勤率计算（日本）",
+        subtitle: "根据周末和日本法定节假日计算需要上学的天数。一天=4节课。缺勤1节=1次缺勤，迟到/早退1节=1/4次缺勤。",
+        year: "年",
+        month: "月",
+        targetRate: "目标出勤率（%）",
+        language: "语言",
+        addHoliday: "添加假期",
+        deleteHoliday: "删除假期",
+        save: "保存",
+        holidayNote: "点击日期添加/删除学校假期，然后保存。1月1-12日和3月25-31日固定为假期。",
+        aprilNotice: "注意：4月以后的学校假期还没有录入。",
+        weekend: "周末",
+        nationalHoliday: "法定节假日",
+        customHoliday: "学校假期",
+        schoolEnds: "学年结束（3/25-31）",
+        holidayLoading: "正在加载假期…",
+        holidayLoaded: "假期已加载。",
+        holidayError: "无法加载假期。仅显示周末。",
+        holidaySaved: "学校假期已保存。",
+        attendanceInputs: "出勤输入（按节）",
+        monthSetup: "月份设置",
+        absentLessons: "缺勤节数",
+        lateLessons: "迟到/早退节数",
+        monthlySummary: "月度汇总",
+        requiredDays: "需要上学的天数",
+        requiredLessons: "需要上学的节数（天 × 4）",
+        currentRate: "当前出勤率",
+        allowedAbsence: "达到目标的允许范围",
+        remainingAbsentDays: "还可以缺勤多少天？",
+        or: "或",
+        remainingLate: "还可以迟到/早退多少节？",
+        rateOnTrack: (rate) => `很好，你的出勤率已达到或超过${rate}%。`,
+        rateBelow: (delta) => `距离目标还差${delta}%。`,
+        noRequired: "本月周末/假期后没有需要上学的节数。",
+        months: [
+          "一月", "二月", "三月", "四月", "五月", "六月",
+          "七月", "八月", "九月", "十月", "十一月", "十二月"
+        ],
+        weekdays: ["一", "二", "三", "四", "五", "六", "日"],
+        labelSchoolHoliday: "学校假期",
+        labelCustomHoliday: "学校假期"
+      }
+    };
+
+    let currentLang = "en";
+    const holidaysCache = new Map(); // year -> Map(dateString -> name)
+    let customHolidaySet = new Set();
+    let editMode = null; // "add" | "delete" | null
+    let currentYear = null;
+    let currentMonth = null;
+    let currentHolidayMap = new Map();
+
+    function initMonthSelect() {
+      const selected = elMonth.value;
+      elMonth.innerHTML = "";
+      i18n[currentLang].months.forEach((name, idx) => {
+        const opt = document.createElement("option");
+        opt.value = String(idx + 1).padStart(2, "0");
+        opt.textContent = name;
+        elMonth.appendChild(opt);
+      });
+      if (selected) elMonth.value = selected;
+    }
+
+    function setDefaults() {
+      const now = new Date();
+      elYear.value = now.getFullYear();
+      elMonth.value = String(now.getMonth() + 1).padStart(2, "0");
+    }
+
+    function applyLanguage() {
+      const dict = i18n[currentLang];
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        if (dict[key]) el.textContent = dict[key];
+      });
+      document.title = dict.title;
+      document.querySelector("h1").textContent = dict.title;
+      document.querySelector(".subtitle").textContent = dict.subtitle;
+      initMonthSelect();
+      render();
+    }
+
+    function formatDateKey(year, month, day) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    function storageKey(year, month) {
+      return `customHolidays-${year}-${String(month).padStart(2, "0")}`;
+    }
+
+    function loadCustomHolidays(year, month) {
+      const raw = localStorage.getItem(storageKey(year, month));
+      if (!raw) return new Set();
+      try {
+        const arr = JSON.parse(raw);
+        return new Set(arr.map(Number));
+      } catch {
+        return new Set();
+      }
+    }
+
+    function saveCustomHolidays(year, month) {
+      const arr = Array.from(customHolidaySet).sort((a, b) => a - b);
+      localStorage.setItem(storageKey(year, month), JSON.stringify(arr));
+    }
+
+    function isFixedSchoolHoliday(year, month, day) {
+      if (month === 1 && day <= 12) return true;
+      return month === 3 && day >= 25;
+    }
+
+    async function loadHolidays(year) {
+      if (holidaysCache.has(year)) return holidaysCache.get(year);
+      elHolidayStatus.hidden = true;
+      try {
+        const res = await fetch(`${apiBase}${year}/${countryCode}`);
+        if (!res.ok) throw new Error("Holiday API error");
+        const data = await res.json();
+        const map = new Map();
+        data.forEach(h => {
+          map.set(h.date, h.localName || h.name);
+        });
+        holidaysCache.set(year, map);
+        elHolidayStatus.hidden = true;
+        return map;
+      } catch (err) {
+        elHolidayStatus.textContent = i18n[currentLang].holidayError;
+        elHolidayStatus.hidden = false;
+        const map = new Map();
+        holidaysCache.set(year, map);
+        return map;
+      }
+    }
+
+    function buildCalendar(year, month, holidayMap) {
+      elCalendar.innerHTML = "";
+      const headers = i18n[currentLang].weekdays;
+      headers.forEach(h => {
+        const div = document.createElement("div");
+        div.className = "cal-head";
+        div.textContent = h;
+        elCalendar.appendChild(div);
+      });
+
+      const first = new Date(year, month - 1, 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const startDay = (first.getDay() + 6) % 7; // Monday = 0
+
+      for (let i = 0; i < startDay; i++) {
+        const empty = document.createElement("div");
+        empty.className = "day empty";
+        elCalendar.appendChild(empty);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month - 1, day);
+        const weekday = (date.getDay() + 6) % 7; // Mon=0
+        const isWeekend = weekday >= 5;
+        const dateKey = formatDateKey(year, month, day);
+        const holidayName = holidayMap.get(dateKey);
+        const isHoliday = Boolean(holidayName);
+        const isFixedHoliday = isFixedSchoolHoliday(year, month, day);
+        const isCustomHoliday = customHolidaySet.has(day);
+
+        const cell = document.createElement("div");
+        cell.className = "day" +
+          (isWeekend ? " weekend" : "") +
+          (isHoliday ? " holiday" : "") +
+          (isCustomHoliday ? " custom" : "") +
+          (isFixedHoliday ? " fixed" : "") +
+          (editMode ? " selectable" : "");
+        cell.dataset.day = String(day);
+
+        const num = document.createElement("div");
+        num.className = "day-num";
+        num.textContent = day;
+        cell.appendChild(num);
+
+        if (isHoliday) {
+          const label = document.createElement("div");
+          label.className = "holiday-name";
+          label.textContent = holidayName;
+          cell.appendChild(label);
+        }
+
+        if (isFixedHoliday) {
+          const label = document.createElement("div");
+          label.className = "holiday-name";
+          label.textContent = i18n[currentLang].labelSchoolHoliday;
+          cell.appendChild(label);
+        } else if (isCustomHoliday && !isHoliday) {
+          const label = document.createElement("div");
+          label.className = "holiday-name";
+          label.textContent = i18n[currentLang].labelCustomHoliday;
+          cell.appendChild(label);
+        }
+
+        if (editMode === "add" && isCustomHoliday) {
+          cell.classList.add("selected");
+        }
+
+        if (editMode === "delete" && isCustomHoliday) {
+          cell.classList.add("selected");
+        }
+
+        elCalendar.appendChild(cell);
+      }
+
+      elCalendar.querySelectorAll(".day.selectable").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const day = parseInt(cell.dataset.day, 10);
+          if (!day) return;
+          if (isFixedSchoolHoliday(year, month, day)) return;
+          if (editMode === "add") {
+            if (customHolidaySet.has(day)) {
+              customHolidaySet.delete(day);
+            } else {
+              customHolidaySet.add(day);
+            }
+          } else if (editMode === "delete") {
+            customHolidaySet.delete(day);
+          }
+          render();
+        });
+      });
+    }
+
+    function computeSummary(year, month, holidayMap) {
+      const daysInMonth = new Date(year, month, 0).getDate();
+      let requiredDays = 0;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month - 1, day);
+        const weekday = (date.getDay() + 6) % 7;
+        const isWeekend = weekday >= 5;
+        if (isWeekend) continue;
+        const dateKey = formatDateKey(year, month, day);
+        const isHoliday = holidayMap.has(dateKey);
+        const isFixedHoliday = isFixedSchoolHoliday(year, month, day);
+        const isCustomHoliday = customHolidaySet.has(day);
+        if (isHoliday || isFixedHoliday || isCustomHoliday) continue;
+        requiredDays++;
+      }
+
+      const requiredLessons = requiredDays * lessonsPerDay;
+      const absentLessons = Math.max(0, parseInt(elAbsentLessons.value || "0", 10));
+      const lateLessons = Math.max(0, parseInt(elLateLessons.value || "0", 10));
+      const absenceQuarters = (absentLessons * 4) + lateLessons;
+      const requiredQuarters = requiredLessons * 4;
+
+      const currentRate = requiredLessons > 0
+        ? Math.max(0, Math.floor((1 - (absenceQuarters / requiredQuarters)) * 10000) / 100)
+        : 0;
+
+      const targetRate = Math.min(100, Math.max(50, parseInt(elTargetRate.value || "0", 10)));
+      const maxAbsenceQuarters = Math.floor(requiredQuarters * (1 - (targetRate / 100)));
+
+      const remainingAbsence = Math.max(0, maxAbsenceQuarters - absenceQuarters);
+      const remainingAbsDays = Math.floor(remainingAbsence / (lessonsPerDay * 4));
+      const remainingLateOnly = remainingAbsence;
+
+      elReqDays.textContent = requiredDays.toString();
+      elReqLessons.textContent = requiredLessons.toString();
+      const currentRateText = Number.isInteger(currentRate)
+        ? currentRate.toString()
+        : currentRate.toFixed(2);
+      elCurrentRate.textContent = `${currentRateText}%`;
+      elRemainingAbsDays.textContent = remainingAbsDays.toString();
+      elRemainingLateOnly.textContent = remainingLateOnly.toString();
+
+      if (requiredLessons === 0) {
+        elRateStatus.textContent = i18n[currentLang].noRequired;
+        return;
+      }
+
+      const status = currentRate >= targetRate
+        ? i18n[currentLang].rateOnTrack(targetRate)
+        : i18n[currentLang].rateBelow((targetRate - currentRate).toFixed(2));
+
+      elRateStatus.textContent = status;
+      elRateStatus.className = "status";
+    }
+
+    function render() {
+      buildCalendar(currentYear, currentMonth, currentHolidayMap);
+      computeSummary(currentYear, currentMonth, currentHolidayMap);
+    }
+
+    async function refresh() {
+      currentYear = parseInt(elYear.value, 10);
+      currentMonth = parseInt(elMonth.value, 10);
+      currentHolidayMap = await loadHolidays(currentYear);
+      customHolidaySet = loadCustomHolidays(currentYear, currentMonth);
+      render();
+    }
+
+    function attachListeners() {
+      [elYear, elMonth, elTargetRate, elAbsentLessons, elLateLessons]
+        .forEach(el => el.addEventListener("input", refresh));
+      elLanguage.addEventListener("change", () => {
+        currentLang = elLanguage.value;
+        applyLanguage();
+      });
+
+      elAddHolidayBtn.addEventListener("click", () => {
+        editMode = editMode === "add" ? null : "add";
+        elAddHolidayBtn.classList.toggle("active", editMode === "add");
+        elDeleteHolidayBtn.classList.remove("active");
+        render();
+      });
+
+      elDeleteHolidayBtn.addEventListener("click", () => {
+        editMode = editMode === "delete" ? null : "delete";
+        elDeleteHolidayBtn.classList.toggle("active", editMode === "delete");
+        elAddHolidayBtn.classList.remove("active");
+        render();
+      });
+
+      elSaveHolidayBtn.addEventListener("click", () => {
+        saveCustomHolidays(currentYear, currentMonth);
+        elHolidayStatus.textContent = i18n[currentLang].holidaySaved;
+        elHolidayStatus.hidden = false;
+      });
+    }
+
+    initMonthSelect();
+    setDefaults();
+    applyLanguage();
+    attachListeners();
+    refresh();
+  </script>
+</body>
+</html>
