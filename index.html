@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Monthly Attendance Rate Calculator</title>
+  <title>Monthly Attendance Rate Calculator (Japan)</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Sans:wght@400;600&display=swap');
 
@@ -567,6 +567,7 @@
     let currentLang = "en";
     const holidaysCache = new Map(); // year -> Map(dateString -> name)
     let customHolidaySet = new Set();
+    let fixedHolidayOverrides = new Set(); // days to remove fixed holidays
     let editMode = null; // "add" | "delete" | null
     let currentYear = null;
     let currentMonth = null;
@@ -611,6 +612,10 @@
       return `customHolidays-${year}-${String(month).padStart(2, "0")}`;
     }
 
+    function fixedOverrideKey(year, month) {
+      return `fixedHolidayOverrides-${year}-${String(month).padStart(2, "0")}`;
+    }
+
     function loadCustomHolidays(year, month) {
       const raw = localStorage.getItem(storageKey(year, month));
       if (!raw) return new Set();
@@ -625,6 +630,22 @@
     function saveCustomHolidays(year, month) {
       const arr = Array.from(customHolidaySet).sort((a, b) => a - b);
       localStorage.setItem(storageKey(year, month), JSON.stringify(arr));
+    }
+
+    function loadFixedOverrides(year, month) {
+      const raw = localStorage.getItem(fixedOverrideKey(year, month));
+      if (!raw) return new Set();
+      try {
+        const arr = JSON.parse(raw);
+        return new Set(arr.map(Number));
+      } catch {
+        return new Set();
+      }
+    }
+
+    function saveFixedOverrides(year, month) {
+      const arr = Array.from(fixedHolidayOverrides).sort((a, b) => a - b);
+      localStorage.setItem(fixedOverrideKey(year, month), JSON.stringify(arr));
     }
 
     function isFixedSchoolHoliday(year, month, day) {
@@ -682,7 +703,7 @@
         const dateKey = formatDateKey(year, month, day);
         const holidayName = holidayMap.get(dateKey);
         const isHoliday = Boolean(holidayName);
-        const isFixedHoliday = isFixedSchoolHoliday(year, month, day);
+        const isFixedHoliday = isFixedSchoolHoliday(year, month, day) && !fixedHolidayOverrides.has(day);
         const isCustomHoliday = customHolidaySet.has(day);
 
         const cell = document.createElement("div");
@@ -733,15 +754,31 @@
         cell.addEventListener("click", () => {
           const day = parseInt(cell.dataset.day, 10);
           if (!day) return;
-          if (isFixedSchoolHoliday(year, month, day)) return;
+          const fixedDay = isFixedSchoolHoliday(year, month, day);
           if (editMode === "add") {
+            if (fixedDay) {
+              if (fixedHolidayOverrides.has(day)) {
+                fixedHolidayOverrides.delete(day);
+              }
+              render();
+              return;
+            }
             if (customHolidaySet.has(day)) {
               customHolidaySet.delete(day);
             } else {
               customHolidaySet.add(day);
             }
           } else if (editMode === "delete") {
-            customHolidaySet.delete(day);
+            if (customHolidaySet.has(day)) {
+              customHolidaySet.delete(day);
+            }
+            if (fixedDay) {
+              if (fixedHolidayOverrides.has(day)) {
+                fixedHolidayOverrides.delete(day);
+              } else {
+                fixedHolidayOverrides.add(day);
+              }
+            }
           }
           render();
         });
@@ -758,7 +795,7 @@
         if (isWeekend) continue;
         const dateKey = formatDateKey(year, month, day);
         const isHoliday = holidayMap.has(dateKey);
-        const isFixedHoliday = isFixedSchoolHoliday(year, month, day);
+        const isFixedHoliday = isFixedSchoolHoliday(year, month, day) && !fixedHolidayOverrides.has(day);
         const isCustomHoliday = customHolidaySet.has(day);
         if (isHoliday || isFixedHoliday || isCustomHoliday) continue;
         requiredDays++;
@@ -813,6 +850,7 @@
       currentMonth = parseInt(elMonth.value, 10);
       currentHolidayMap = await loadHolidays(currentYear);
       customHolidaySet = loadCustomHolidays(currentYear, currentMonth);
+      fixedHolidayOverrides = loadFixedOverrides(currentYear, currentMonth);
       render();
     }
 
@@ -840,6 +878,7 @@
 
       elSaveHolidayBtn.addEventListener("click", () => {
         saveCustomHolidays(currentYear, currentMonth);
+        saveFixedOverrides(currentYear, currentMonth);
         elHolidayStatus.textContent = i18n[currentLang].holidaySaved;
         elHolidayStatus.hidden = false;
       });
